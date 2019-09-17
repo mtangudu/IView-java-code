@@ -254,58 +254,54 @@ public class ExcelToJsonController {
 	}
 
 	@CrossOrigin(origins = "*")
-	@PostMapping("/saveAs")
-	public ResponseEntity<String> saveAsData(@RequestParam("nodedata") NodeData data, @RequestParam("description") String id) throws IOException {
-		log.info("uploading the file " + id);
-		log.info("File passed : " + id.toString());	
-		
-		String serviceLine = id;
-		Properties fieldDetails = getFieldPasroperties();
-		ObjectMapper mapper = new ObjectMapper();
+    @PostMapping("/saveAs/{id}")
+    public ResponseEntity<String> saveAsData( @RequestBody Map<String, Object> updatedData, @PathVariable  String  id) throws IOException {
+          log.info("uploading the file " + id);
+          log.info("File passed : " + id.toString());   
+          
+          String serviceLine = id;
+          Properties fieldDetails = getFieldPasroperties();
+          ObjectMapper mapper = new ObjectMapper();
 
-		if (!fieldDetails.isEmpty() && id.length()>0 ) {
-			InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
-					.getResourceAsStream("application.properties");
-			Properties appProperties = new Properties();			
-			appProperties.load(propertiesInput);
-			MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),new Integer(appProperties.getProperty("mongodb.port")));
-			MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
+          if (!fieldDetails.isEmpty() && id.length()>0 ) {
+                 InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
+                              .getResourceAsStream("application.properties");
+                 Properties appProperties = new Properties();                    
+                 appProperties.load(propertiesInput);
+                 MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),new Integer(appProperties.getProperty("mongodb.port")));
+                 MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
 
-			MongoCollection<Document> coll = db.getCollection("service_line");
-			BasicDBObject whereQuery = new BasicDBObject();
-			whereQuery.put("_id",serviceLine);
-			FindIterable<Document> cursor = coll.find(whereQuery);
-			
-			if(cursor.first() == null) {
-				//new file
-				Document doc = new Document();
-				doc.append("_id", serviceLine);
-				doc.append("description", serviceLine);
-				coll.insertOne(doc);
-				
-				coll = db.getCollection(appProperties.getProperty("mongodb.collection"));
-				
-				HashMap<String, Object> metaData = new HashMap<String, Object>();
-				
-				if (coll.find().first().get("meta") != null) 
-					metaData = (HashMap<String, Object>) coll.find().first().get("meta");
-				
-				doc = new Document();
-				doc.append("_id", serviceLine);
-				doc.append("meta", metaData);
-				doc.append("data", mapper.convertValue(data, Map.class));
+                 MongoCollection<Document> coll = db.getCollection("service_line");
+                 BasicDBObject whereQuery = new BasicDBObject();
+                 whereQuery.put("_id",serviceLine);
+                 FindIterable<Document> cursor = coll.find(whereQuery);
+                 
+                 if(cursor.first() == null) {
+                       //new file
+                       Document doc = new Document();
+                       doc.append("_id", serviceLine);
+                       doc.append("description", serviceLine);
+                       coll.insertOne(doc);
+                       
+                       coll = db.getCollection(appProperties.getProperty("mongodb.collection"));
+                       
+                       doc = new Document();
+                       doc.append("_id", serviceLine);
+                       doc.append("meta", mapper.convertValue(updatedData.get("meta"), Map.class));
+                       doc.append("data", mapper.convertValue(updatedData.get("data"), Map.class));
 
-				coll.insertOne(doc);
-				mongoClient.close();
-				
-			}else {
-				mongoClient.close();
-				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Duplicate id. Please try again with new id.");
-			}
-			
-		}
-		return ResponseEntity.ok().body(JSONObject.quote("Successfully added file : " + id));
-	}
+                       coll.insertOne(doc);
+                       mongoClient.close();
+                       
+                 }else {
+                       mongoClient.close();
+                       return ResponseEntity.status(HttpStatus.OK).body("Duplicate id. Please try again with new id.");
+                 }
+                 
+          }
+          return ResponseEntity.ok().body(JSONObject.quote("Successfully added file : " + id));
+    }
+
 	
     @CrossOrigin(origins = "*")
     @GetMapping("/rename")
