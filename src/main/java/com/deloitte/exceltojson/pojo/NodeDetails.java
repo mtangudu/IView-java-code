@@ -14,6 +14,43 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 	"Total Process Path Length NFR" })
 public class NodeDetails {
 	
+	
+	
+	public NodeDetails(String name, String group, String owner, String hostedOn, String provider, String consumers,
+			String integrationPattern, String confidenceLevel, String noOfInvocations, String dbCalls, String logic,
+			String rules, String latency, String timeOfFunction, String totalProcessTime, String totalProcessPathLength,
+			String processNFR, String totalProcessNFR, String totalProcessPathLengthNFR) {
+		super();
+		this.name = name;
+		this.group = group;
+		this.owner = owner;
+		this.hostedOn = hostedOn;
+		this.provider = provider;
+		this.consumers = consumers;
+		this.integrationPattern = integrationPattern;
+		this.confidenceLevel = confidenceLevel;
+		this.noOfInvocations = noOfInvocations;
+		this.dbCalls = dbCalls;
+		this.logic = logic;
+		this.rules = rules;
+		this.latency = latency;
+		this.timeOfFunction = timeOfFunction;
+		this.totalProcessTime = totalProcessTime;
+		this.totalProcessPathLength = totalProcessPathLength;
+		this.processNFR = processNFR;
+		this.totalProcessNFR = totalProcessNFR;
+		this.totalProcessPathLengthNFR = totalProcessPathLengthNFR;
+	}
+	
+	
+
+	public NodeDetails() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+
+
+
 	@JsonProperty(value="Process")
 	public String name;
 	public String getName() {

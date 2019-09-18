@@ -25,9 +25,33 @@ public class NodeData {
 				 "connectionType : "+ connectionType + "linkIndex : "+linkIndex +"children : "+ children; 
 	}
 	
+	public NodeData(String template) {
+		super();
+		this.serialNoIndex = "serialNo";
+		this.etaStatus = "On Target";
+		this.name = "Root node";
+		this.description = "Root node description";
+		this.details = new NodeDetails("serialNo", "Group", "owner", "hostedOn", "provider",
+				"consumers", "PCF Internal (C-to-C)", "confidenceLevel", "noOfInvocations", "dbCalls", "logic",
+				"rules", "latency", "timeOfFunction", "totalProcessTime", "totalProcessPathLength", "processNFR", 
+				"totalProcessNFR", "totalProcessPathLengthNFR") ;
+		this.category = "CC000";
+		this.connectionType = "IP000";
+		this.linkIndex = "0";
+		
+	}
+	
+	
+
 	public String getSerialNoIndex() {
 		return serialNoIndex;
 	}
+	
+	public NodeData() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+
 	public void setSerialNoIndex(String serialNoIndex) {
 		this.serialNoIndex = serialNoIndex;
 	}

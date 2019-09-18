@@ -1,12 +1,15 @@
 package com.deloitte.exceltojson.controller;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,6 +45,7 @@ import com.deloitte.exceltojson.processor.Constants;
 import com.deloitte.exceltojson.processor.MessageProcessor;
 import com.deloitte.exceltojson.repo.NodeDataRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -357,6 +361,61 @@ public class ExcelToJsonController {
 		}
           
     }
+    
+    @CrossOrigin(origins = "*")
+    @GetMapping("/newDocument")
+    public ResponseEntity<String> newTemplate() throws IOException {
+		
+    	InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
+				.getResourceAsStream("application.properties");
+    	Properties appProperties = new Properties();			
+		appProperties.load(propertiesInput);
+		ObjectMapper mapper = new ObjectMapper();
+		
+    	MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),new Integer(appProperties.getProperty("mongodb.port")));
+		MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
+
+		MongoCollection<Document> coll = db.getCollection("service_line");
+		
+		String DocId = "NewDocument"+new Timestamp(System.currentTimeMillis()).getTime();
+
+		// inserting new record
+		Document doc = new Document();
+		doc.append("_id", DocId);
+		doc.append("description", "Document description");
+		try {
+		coll.insertOne(doc);
+		}
+		catch(com.mongodb.MongoWriteException e){
+			mongoClient.close();
+			return ResponseEntity.badRequest().body(JSONObject.quote("Sample record already exists"));
+		}
+		catch(Exception e) {
+			mongoClient.close();
+			return ResponseEntity.badRequest().body(JSONObject.quote("An internal exception occured."));
+		}
+		// copying old node data
+		MongoCollection<Document> nodeColl = db.getCollection(appProperties.getProperty("mongodb.collection"));
+
+		NodeData nodeData = new NodeData("Template");
+
+		String metaDatajson = appProperties.getProperty("node.metadata");
+
+		HashMap<String, Object> metaDataMap = new HashMap<String, Object>();
+
+		metaDataMap = mapper.readValue(metaDatajson, new TypeReference<Map<String, Object>>() {	});
+
+		Document newDoc = new Document();
+		newDoc.append("_id", DocId);
+		newDoc.append("meta", metaDataMap);
+		newDoc.append("data", mapper.convertValue(nodeData, Map.class));
+		nodeColl.insertOne(newDoc);
+
+		mongoClient.close();
+			
+		return ResponseEntity.ok().body(JSONObject.quote("Successfully created a new Template document"));
+          
+    }
 
     
 	@CrossOrigin(origins = "*")
@@ -512,5 +571,5 @@ public class ExcelToJsonController {
 			return false;
 		}
 	}
-
+	
 }
