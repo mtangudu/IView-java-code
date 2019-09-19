@@ -308,7 +308,7 @@ public class ExcelToJsonController {
 
 	
     @CrossOrigin(origins = "*")
-    @GetMapping("/rename")
+    @PostMapping("/rename")
     public ResponseEntity<String> rename(@RequestParam("oldId") String oldId, @RequestParam("newId") String newId) throws IOException {
 		
     	InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()

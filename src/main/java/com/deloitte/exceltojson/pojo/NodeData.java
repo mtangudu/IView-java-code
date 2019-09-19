@@ -27,14 +27,14 @@ public class NodeData {
 	
 	public NodeData(String template) {
 		super();
-		this.serialNoIndex = "serialNo";
+		this.serialNoIndex = "1";
 		this.etaStatus = "On Target";
 		this.name = "Root node";
 		this.description = "Root node description";
-		this.details = new NodeDetails("serialNo", "Group", "owner", "hostedOn", "provider",
-				"consumers", "PCF Internal (C-to-C)", "confidenceLevel", "noOfInvocations", "dbCalls", "logic",
-				"rules", "latency", "timeOfFunction", "totalProcessTime", "totalProcessPathLength", "processNFR", 
-				"totalProcessNFR", "totalProcessPathLengthNFR") ;
+		this.details = new NodeDetails("Root node", "Group", "owner", "hostedOn", "provider",
+				"consumers", "PCF Internal (C-to-C)", "Group", "0", "0", "0",
+				"0", "0", "0", "0", "0", "0", 
+				"0", "0") ;
 		this.category = "CC000";
 		this.connectionType = "IP000";
 		this.linkIndex = "0";
