@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -17,51 +15,32 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.bson.Document;
 import org.apache.poi.ss.usermodel.CellType;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.deloitte.exceltojson.controller.ExcelToJsonController;
 import com.deloitte.exceltojson.pojo.NodeData;
 import com.deloitte.exceltojson.pojo.NodeDetails;
-import com.deloitte.exceltojson.pojo.SheetData;
 import com.deloitte.exceltojson.repo.NodeDataRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
-import com.mongodb.util.JSON;
+import com.deloitte.exceltojson.util.Calculate;
 
+@SuppressWarnings("unchecked")
 public class MessageProcessor {
 
 	final static Logger log = Logger.getLogger(MessageProcessor.class);
 
 	@Autowired
 	NodeDataRepository nodeDataRepository;
-	public static int convertStringToInt(Object valueToConvert)
-	{
-		if (valueToConvert == null)
-			return 0;
-		else
-		return Integer.valueOf(valueToConvert.toString());
-	}
 	
-	public static int getTimeOfFunction (LinkedHashMap<String, Object> nodeData)
-	{
-		LinkedHashMap<String, Object> nodeDetails = (LinkedHashMap<String, Object>) nodeData.get("details");
-		int dbCall = convertStringToInt(nodeDetails.get("DB Calls (ms)"));
-		int logic = convertStringToInt(nodeDetails.get("Logic (ms)"));
-		int rules =convertStringToInt(nodeDetails.get("Rules (ms)"));
-		int latency =convertStringToInt(nodeDetails.get("Latency (ms)"));
-		return dbCall + logic+ rules+ latency;
-	}
 	
-public static LinkedHashMap<String, Object> updateNFR (LinkedHashMap<String, Object> nodeData,Map<String, Integer> countMap ){
+	
+	public static LinkedHashMap<String, Object> updateNFR (Properties appProperties, LinkedHashMap<String, Object> nodeData,Map<String, Integer> countMap ){
 		ArrayList<LinkedHashMap<String, Object>> children = (ArrayList<LinkedHashMap<String, Object>>) nodeData.get("children");
 		countMap.put("count",countMap.get("count") + 1);
 		
@@ -69,29 +48,27 @@ public static LinkedHashMap<String, Object> updateNFR (LinkedHashMap<String, Obj
 		{
 			int cb = isChildAvailable(c);
 			if (cb == 1){
-				updateNFR(c, countMap );
+				updateNFR(appProperties, c, countMap );
 			}
 			else{
-				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) c.get("details");
-				int timeOfFun = getTimeOfFunction(c);
-				int totalProcessTime = timeOfFun *convertStringToInt(nd.get("Count of Invocations")) ;
-				int totalProcessNFR = convertStringToInt(nd.get("Count of Invocations")) * convertStringToInt(nd.get("Process NFR"));
-				nd.put("Time of Function/Call", String.valueOf(timeOfFun));
-				nd.put("Total Process Time", String.valueOf(totalProcessTime));
-				nd.put("Total Process Path Length", String.valueOf(totalProcessTime));
-				//nd.put("Total Process NFR", String.valueOf(totalProcessNFR * convertStringToInt(nd.get("Count of Invocations"))));
-				nd.put("Total Process NFR", String.valueOf(totalProcessNFR));
-				nd.put("Total Process Path Length NFR", String.valueOf(totalProcessNFR));				
-				//previously working one 
-				//nd.put("Total Process Path Length NFR",getNFRFromChild(children));
-				c.put("details", nd);
+				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) c.get(appProperties.get("data.details"));
+				int timeOfFun = Calculate.getTimeOfFunction(c);
+				int totalProcessTime = timeOfFun *Calculate.convertStringToInt(nd.get(appProperties.get("data.details.countOfInvocations"))) ;
+				int totalProcessNFR = Calculate.convertStringToInt(nd.get(appProperties.get("data.details.countOfInvocations")))
+						* Calculate.convertStringToInt(nd.get(appProperties.get("data.details.ProcessNFR")));
+				nd.put((String) appProperties.get("data.details.timeOfFuncation"), String.valueOf(timeOfFun));
+				nd.put((String) appProperties.get("data.details.totalProcessTime"), String.valueOf(totalProcessTime));
+				nd.put((String) appProperties.get("data.details.totalProcessPathLength"), String.valueOf(totalProcessTime));
+				nd.put((String) appProperties.get("data.details.totalProcessNFR"), String.valueOf(totalProcessNFR));
+				nd.put((String) appProperties.get("data.details.totalProcessPathLenghtNFR"), String.valueOf(totalProcessNFR));				
+				c.put((String) appProperties.get("data.details"), nd);
 			}
 		}
 		Map<String, Integer> cm = new LinkedHashMap<String, Integer>();
 		cm.put("count", 1);
-		return updateNFRAtLocation(nodeData, countMap.get("count")-1,cm );
+		return updateNFRAtLocation(appProperties, nodeData, countMap.get("count")-1,cm );
 	}
-	public static LinkedHashMap<String, Object> updateNFRAtLocation (LinkedHashMap<String, Object> nodeData, int currentLocation,Map<String,Integer> countMap)
+	public static LinkedHashMap<String, Object> updateNFRAtLocation (Properties appProperties, LinkedHashMap<String, Object> nodeData, int currentLocation,Map<String,Integer> countMap)
 	{		//GOT LOCATION AS 2 GOT 2ND OBJECT TOO..
 		
 		for (int i = currentLocation; i>0; i--)
@@ -99,52 +76,30 @@ public static LinkedHashMap<String, Object> updateNFR (LinkedHashMap<String, Obj
 			if (currentLocation == countMap.get("count"))
 			{
 				ArrayList<LinkedHashMap<String, Object>> children = (ArrayList<LinkedHashMap<String, Object>>) nodeData.get("children");
-				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) nodeData.get("details");
-				//nd.remove("Total Process Path Length NFR");
-				//nd.put("Total Process Path Length NFR",getNFRFromChild(children));a
-				int timeOfFun = getTimeOfFunction(nodeData);
-				int totalProcessTime = convertStringToInt(nd.get("Count of Invocations")) * timeOfFun;
-				int totalProcessNFR = convertStringToInt(nd.get("Count of Invocations")) * convertStringToInt(nd.get("Process NFR"));
-				nd.put("Time of Function/Call", String.valueOf(timeOfFun));
-				nd.put("Total Process Time", String.valueOf(totalProcessTime));
-				nd.put("Total Process Path Length", getTotalProcessPathLenghtForParent(totalProcessTime, children));
-				nd.put("Total Process NFR", String.valueOf(totalProcessNFR));
-				nd.put("Total Process Path Length NFR",getTotalProcessPathLenghtNFRForParent(totalProcessNFR,children));
-				nodeData.put("details", nd);
+				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) nodeData.get(appProperties.get("data.details"));
+				int timeOfFun = Calculate.getTimeOfFunction(nodeData);
+				int totalProcessTime = Calculate.convertStringToInt(nd.get(appProperties.get("data.details.countOfInvocations"))) * timeOfFun;
+				int totalProcessNFR = Calculate.convertStringToInt(nd.get(appProperties.get("data.details.countOfInvocations"))) 
+							* Calculate.convertStringToInt(nd.get(appProperties.get("data.details.ProcessNFR")));
+				
+				nd.put((String) appProperties.get("data.details.timeOfFuncation"), String.valueOf(timeOfFun));
+				nd.put((String) appProperties.get("data.details.totalProcessTime"), String.valueOf(totalProcessTime));
+				nd.put((String) appProperties.get("data.details.totalProcessPathLength"), Calculate.getTotalProcessPathLenghtForParent(totalProcessTime, children));
+				nd.put((String) appProperties.get("data.details.totalProcessNFR"), String.valueOf(totalProcessNFR));
+				nd.put((String) appProperties.get("data.details.totalProcessPathLenghtNFR"),Calculate.getTotalProcessPathLenghtNFRForParent(totalProcessNFR,children));
+				nodeData.put((String) appProperties.get("data.details"), nd);
 			}
 			else
 			{
-				ArrayList<LinkedHashMap<String, Object>> children = (ArrayList<LinkedHashMap<String, Object>>) nodeData.get("children");
-				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) nodeData.get("details");
 				countMap.put("count", countMap.get("count")+1);
-				updateNFRAtLocation(nodeData, currentLocation,countMap);
+				updateNFRAtLocation(appProperties, nodeData, currentLocation,countMap);
 			}
 		}
 		return nodeData;
 	}
 	
 	
-	public static String getTotalProcessPathLenghtNFRForParent (int totalProcessNFR, ArrayList<LinkedHashMap<String, Object>> children)
-	{
-		int nfr=0;
-		for (Map<String, Object> c: children){
-			Map<String, Object> nd = (Map<String, Object>) c.get("details");
-			if (nd.get("Total Process Path Length NFR") != null)
-				nfr = nfr + Integer.valueOf(nd.get("Total Process Path Length NFR").toString());
-		}
-		return String.valueOf(nfr + totalProcessNFR);
-	}
 	
-	public static String getTotalProcessPathLenghtForParent (int totalProcessPathLength, ArrayList<LinkedHashMap<String, Object>> children)
-	{
-		int nfr=0;
-		for (Map<String, Object> c: children){
-			Map<String, Object> nd = (Map<String, Object>) c.get("details");
-			if (nd.get("Total Process Path Length") != null)
-				nfr = nfr + Integer.valueOf(nd.get("Total Process Path Length").toString());
-		}
-		return String.valueOf(nfr + totalProcessPathLength);
-	}
 	public static int isChildAvailable (Map<String, Object> nodeData)
 	{
 		ArrayList<Map<String, Object>> children = (ArrayList<Map<String, Object>>) nodeData.get("children");
@@ -480,7 +435,6 @@ public static LinkedHashMap<String, Object> updateNFR (LinkedHashMap<String, Obj
 			Properties fieldDetails, String serialNoIndex) {
 		int sheetDataLen = sheetDataList.size();
 		ArrayList<NodeData> child = new ArrayList<NodeData>();
-		NodeData nd = new NodeData();
 		for (int i = 0; i < sheetDataLen; i++) {
 			HashMap<String, String> singleNodeData = sheetDataList.get(i);
 

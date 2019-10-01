@@ -1,14 +1,8 @@
 package com.deloitte.exceltojson.controller;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,20 +10,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.servlet.http.HttpServletResponse;
-import javax.websocket.server.PathParam;
-
-import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.bson.Document;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,20 +31,19 @@ import com.deloitte.exceltojson.pojo.ExcelReader;
 import com.deloitte.exceltojson.pojo.NodeData;
 import com.deloitte.exceltojson.processor.Constants;
 import com.deloitte.exceltojson.processor.MessageProcessor;
-import com.deloitte.exceltojson.repo.NodeDataRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.BasicDBObject;
-import com.mongodb.DBCursor;
 import com.mongodb.MongoClient;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 
+@SuppressWarnings("unchecked")
 @RestController
 public class ExcelToJsonController {
 
@@ -82,7 +68,7 @@ public class ExcelToJsonController {
 			BasicDBObject whereQuery = new BasicDBObject();
 			//whereQuery.put("_id",appProperties.getProperty("mongodb.docid"));
 			FindIterable<Document> cursor = coll.find(whereQuery);
-			ArrayList responseAL = new ArrayList();
+			ArrayList<Document> responseAL = new ArrayList<Document>();
 			for (Document d : cursor) {
 				responseAL.add(d);
 			}
@@ -180,10 +166,13 @@ public class ExcelToJsonController {
 		log.info("Initiating the process ");
 		InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
 				.getResourceAsStream("application.properties");
+		InputStream fieldpropertiesInput = ExcelToJsonController.class.getClassLoader()
+				.getResourceAsStream("field-details.properties");
 		Properties appProperties = new Properties();
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			appProperties.load(propertiesInput);
+			appProperties.load(fieldpropertiesInput);
 
 			MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),
 					new Integer(appProperties.getProperty("mongodb.port")));
@@ -193,10 +182,7 @@ public class ExcelToJsonController {
 			Map<String, Integer> countMap = new HashMap<String, Integer> (); 
 			countMap.put("count", 0);
 			
-			LinkedHashMap<String, Object> processedNFR = MessageProcessor.updateNFR((LinkedHashMap<String, Object>) updatedData.get("data"), countMap);
-			System.out.println("processedNFR :: " + processedNFR);
-			System.out.println("updatedData.get :: " + updatedData.get("data")); 
-			System.out.println();
+			LinkedHashMap<String, Object> processedNFR = MessageProcessor.updateNFR(appProperties,(LinkedHashMap<String, Object>) updatedData.get("data"), countMap);
 			try {
 				coll.deleteOne(Filters.eq("_id", serviceLine));
 
@@ -525,6 +511,7 @@ public class ExcelToJsonController {
 
 	}
 	
+	
 	@CrossOrigin(origins = "*")
 	@GetMapping("/fetch/{serviceLine}/{serialNo}")
 	public ResponseEntity<String> fetchDataById(@PathVariable  String  serviceLine, @PathVariable  String  serialNo) throws JsonProcessingException {
@@ -533,7 +520,7 @@ public class ExcelToJsonController {
 		Properties appProperties = getFieldPasroperties();
 		ObjectMapper mapper = new ObjectMapper();
 		JsonNode rootNode = mapper.createObjectNode();
-		Map a= new HashMap();
+		Map<String, Object> map= new HashMap<String, Object>();
 		try {
 			appProperties.load(propertiesInput);
 
@@ -562,14 +549,14 @@ public class ExcelToJsonController {
 			Properties fieldAppProperties = getFieldPasroperties();
 			//NodeData processedData = MessageProcessor.updateData(currentData, fieldAppProperties, updatedData);
 			NodeData processedData = MessageProcessor.getDataBySerialNo(currentData, fieldAppProperties, serialNo);
-			a.put("_id", serviceLine);
-			a.put("meta", mapper.convertValue(metaObject, Map.class));
-			a.put("data", mapper.convertValue(processedData, Map.class));
+			map.put("_id", serviceLine);
+			map.put("meta", mapper.convertValue(metaObject, Map.class));
+			map.put("data", mapper.convertValue(processedData, Map.class));
 		} catch (IOException e) {
 			e.printStackTrace();
 			log.error("Sorry, unable to find application.properties");
 		}
-		String jsonData = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(a);
+		String jsonData = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(map);
 		HttpHeaders responseHeaders = new HttpHeaders();
 		responseHeaders.set("Content-Type", "application/json");
 
