@@ -43,7 +43,116 @@ public class MessageProcessor {
 
 	@Autowired
 	NodeDataRepository nodeDataRepository;
+	public static int convertStringToInt(Object valueToConvert)
+	{
+		if (valueToConvert == null)
+			return 0;
+		else
+		return Integer.valueOf(valueToConvert.toString());
+	}
 	
+	public static int getTimeOfFunction (LinkedHashMap<String, Object> nodeData)
+	{
+		LinkedHashMap<String, Object> nodeDetails = (LinkedHashMap<String, Object>) nodeData.get("details");
+		int dbCall = convertStringToInt(nodeDetails.get("DB Calls (ms)"));
+		int logic = convertStringToInt(nodeDetails.get("Logic (ms)"));
+		int rules =convertStringToInt(nodeDetails.get("Rules (ms)"));
+		int latency =convertStringToInt(nodeDetails.get("Latency (ms)"));
+		return dbCall + logic+ rules+ latency;
+	}
+	
+public static LinkedHashMap<String, Object> updateNFR (LinkedHashMap<String, Object> nodeData,Map<String, Integer> countMap ){
+		ArrayList<LinkedHashMap<String, Object>> children = (ArrayList<LinkedHashMap<String, Object>>) nodeData.get("children");
+		countMap.put("count",countMap.get("count") + 1);
+		
+		for (LinkedHashMap<String, Object> c : children)
+		{
+			int cb = isChildAvailable(c);
+			if (cb == 1){
+				updateNFR(c, countMap );
+			}
+			else{
+				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) c.get("details");
+				int timeOfFun = getTimeOfFunction(c);
+				int totalProcessTime = timeOfFun *convertStringToInt(nd.get("Count of Invocations")) ;
+				int totalProcessNFR = convertStringToInt(nd.get("Count of Invocations")) * convertStringToInt(nd.get("Process NFR"));
+				nd.put("Time of Function/Call", String.valueOf(timeOfFun));
+				nd.put("Total Process Time", String.valueOf(totalProcessTime));
+				nd.put("Total Process Path Length", String.valueOf(totalProcessTime));
+				//nd.put("Total Process NFR", String.valueOf(totalProcessNFR * convertStringToInt(nd.get("Count of Invocations"))));
+				nd.put("Total Process NFR", String.valueOf(totalProcessNFR));
+				nd.put("Total Process Path Length NFR", String.valueOf(totalProcessNFR));				
+				//previously working one 
+				//nd.put("Total Process Path Length NFR",getNFRFromChild(children));
+				c.put("details", nd);
+			}
+		}
+		Map<String, Integer> cm = new LinkedHashMap<String, Integer>();
+		cm.put("count", 1);
+		return updateNFRAtLocation(nodeData, countMap.get("count")-1,cm );
+	}
+	public static LinkedHashMap<String, Object> updateNFRAtLocation (LinkedHashMap<String, Object> nodeData, int currentLocation,Map<String,Integer> countMap)
+	{		//GOT LOCATION AS 2 GOT 2ND OBJECT TOO..
+		
+		for (int i = currentLocation; i>0; i--)
+		{
+			if (currentLocation == countMap.get("count"))
+			{
+				ArrayList<LinkedHashMap<String, Object>> children = (ArrayList<LinkedHashMap<String, Object>>) nodeData.get("children");
+				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) nodeData.get("details");
+				//nd.remove("Total Process Path Length NFR");
+				//nd.put("Total Process Path Length NFR",getNFRFromChild(children));a
+				int timeOfFun = getTimeOfFunction(nodeData);
+				int totalProcessTime = convertStringToInt(nd.get("Count of Invocations")) * timeOfFun;
+				int totalProcessNFR = convertStringToInt(nd.get("Count of Invocations")) * convertStringToInt(nd.get("Process NFR"));
+				nd.put("Time of Function/Call", String.valueOf(timeOfFun));
+				nd.put("Total Process Time", String.valueOf(totalProcessTime));
+				nd.put("Total Process Path Length", getTotalProcessPathLenghtForParent(totalProcessTime, children));
+				nd.put("Total Process NFR", String.valueOf(totalProcessNFR));
+				nd.put("Total Process Path Length NFR",getTotalProcessPathLenghtNFRForParent(totalProcessNFR,children));
+				nodeData.put("details", nd);
+			}
+			else
+			{
+				ArrayList<LinkedHashMap<String, Object>> children = (ArrayList<LinkedHashMap<String, Object>>) nodeData.get("children");
+				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) nodeData.get("details");
+				countMap.put("count", countMap.get("count")+1);
+				updateNFRAtLocation(nodeData, currentLocation,countMap);
+			}
+		}
+		return nodeData;
+	}
+	
+	
+	public static String getTotalProcessPathLenghtNFRForParent (int totalProcessNFR, ArrayList<LinkedHashMap<String, Object>> children)
+	{
+		int nfr=0;
+		for (Map<String, Object> c: children){
+			Map<String, Object> nd = (Map<String, Object>) c.get("details");
+			if (nd.get("Total Process Path Length NFR") != null)
+				nfr = nfr + Integer.valueOf(nd.get("Total Process Path Length NFR").toString());
+		}
+		return String.valueOf(nfr + totalProcessNFR);
+	}
+	
+	public static String getTotalProcessPathLenghtForParent (int totalProcessPathLength, ArrayList<LinkedHashMap<String, Object>> children)
+	{
+		int nfr=0;
+		for (Map<String, Object> c: children){
+			Map<String, Object> nd = (Map<String, Object>) c.get("details");
+			if (nd.get("Total Process Path Length") != null)
+				nfr = nfr + Integer.valueOf(nd.get("Total Process Path Length").toString());
+		}
+		return String.valueOf(nfr + totalProcessPathLength);
+	}
+	public static int isChildAvailable (Map<String, Object> nodeData)
+	{
+		ArrayList<Map<String, Object>> children = (ArrayList<Map<String, Object>>) nodeData.get("children");
+		if (children != null && children.size()>0)
+			return 1;
+		else
+			return 0;
+	}
 	
 	public static NodeData getUpdatedData (NodeData nd, Properties fieldDetails, NodeData updatedData)
 	{

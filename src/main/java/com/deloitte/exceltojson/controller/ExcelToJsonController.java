@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 
@@ -173,15 +174,14 @@ public class ExcelToJsonController {
 	}*/
 	
 	@CrossOrigin(origins = "*")
-	@PostMapping("/update/{serviceLine}")
-	public String updateData( @RequestBody Map<String, Object> updatedData, @PathVariable  String  serviceLine) throws IOException {
+	@PostMapping("/update/publish/{serviceLine}")
+	public String updateDataAndPublish( @RequestBody Map<String, Object> updatedData, @PathVariable  String  serviceLine) throws IOException {
 		
 		log.info("Initiating the process ");
 		InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
 				.getResourceAsStream("application.properties");
 		Properties appProperties = new Properties();
 		ObjectMapper mapper = new ObjectMapper();
-		JsonNode rootNode = mapper.createObjectNode();
 		try {
 			appProperties.load(propertiesInput);
 
@@ -189,21 +189,27 @@ public class ExcelToJsonController {
 					new Integer(appProperties.getProperty("mongodb.port")));
 			MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
 			MongoCollection<Document> coll = db.getCollection(appProperties.getProperty("mongodb.collection"));
+			//MessageProcessor.updateNFR((Map<String, Object>) updatedData.get("data"), 0);
+			Map<String, Integer> countMap = new HashMap<String, Integer> (); 
+			countMap.put("count", 0);
+			
+			LinkedHashMap<String, Object> processedNFR = MessageProcessor.updateNFR((LinkedHashMap<String, Object>) updatedData.get("data"), countMap);
+			System.out.println("processedNFR :: " + processedNFR);
+			System.out.println("updatedData.get :: " + updatedData.get("data")); 
+			System.out.println();
 			try {
-				appProperties.load(propertiesInput);
-
 				coll.deleteOne(Filters.eq("_id", serviceLine));
 
 				Document doc = new Document();
 				doc.append("_id", serviceLine);
 				doc.append("meta", mapper.convertValue(updatedData.get("meta"), Map.class));
-				doc.append("data", mapper.convertValue(updatedData.get("data"), Map.class));
+				doc.append("data", mapper.convertValue(processedNFR, Map.class));
 
 				coll.insertOne(doc);
 
 				mongoClient.close();
 
-			} catch (IOException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 				log.error("Sorry, unable to find application.properties");
 			}
@@ -226,6 +232,56 @@ public class ExcelToJsonController {
 			       .body("Data Updated!");*/
 	}
 	
+	@CrossOrigin(origins = "*")
+	@PostMapping("/update/{serviceLine}")
+	public String updateData( @RequestBody Map<String, Object> updatedData, @PathVariable  String  serviceLine) throws IOException {
+		
+		log.info("Initiating the process ");
+		InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
+				.getResourceAsStream("application.properties");
+		Properties appProperties = new Properties();
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			appProperties.load(propertiesInput);
+
+			MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),
+					new Integer(appProperties.getProperty("mongodb.port")));
+			MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
+			MongoCollection<Document> coll = db.getCollection(appProperties.getProperty("mongodb.collection"));			
+			try {
+				coll.deleteOne(Filters.eq("_id", serviceLine));
+
+				Document doc = new Document();
+				doc.append("_id", serviceLine);
+				doc.append("meta", mapper.convertValue(updatedData.get("meta"), Map.class));
+				doc.append("data", mapper.convertValue(updatedData.get("data"), Map.class));
+
+				coll.insertOne(doc);
+
+				mongoClient.close();
+
+			} catch (Exception e) {
+				e.printStackTrace();
+				log.error("Sorry, unable to find application.properties");
+			}
+			
+			mongoClient.close();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			log.error("Sorry, unable to find application.properties");
+		}
+		
+		//return "Successfully uploaded file : " ;
+
+		HttpHeaders responseHeaders = new HttpHeaders();
+		responseHeaders.set("Content-Type", "application/json");
+
+		return JSONObject.quote("Data Updated!");
+		/*return ResponseEntity.status(HttpStatus.OK)
+			       .contentType(MediaType.TEXT_PLAIN)
+			       .body("Data Updated!");*/
+	}
 	@CrossOrigin(origins = "*")
 	@PostMapping("/upload")
 	public String uploadData(@RequestParam("file") MultipartFile file, @RequestParam("description") String description) throws IOException {
