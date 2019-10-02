@@ -16,6 +16,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.bson.Document;
 import org.json.JSONObject;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -86,12 +87,77 @@ public class ExcelToJsonController {
 		return ResponseEntity.ok().headers(responseHeaders).body(jsonData);
 
 	}
-	
-	
-	
-	
-	
 
+	
+	/*@CrossOrigin(origins = "http://localhost:4200")
+	@PostMapping("/update/{serviceLine}")
+	public ResponseEntity<String> updateData( @RequestBody NodeData updatedData, @PathVariable  String  serviceLine) throws IOException {
+		
+		log.info("Initiating the process ");
+		InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
+				.getResourceAsStream("application.properties");
+		Properties appProperties = getFieldPasroperties();
+		ObjectMapper mapper = new ObjectMapper();
+		JsonNode rootNode = mapper.createObjectNode();
+		try {
+			appProperties.load(propertiesInput);
+
+			MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),
+					new Integer(appProperties.getProperty("mongodb.port")));
+			MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
+			MongoCollection<Document> coll = db.getCollection(appProperties.getProperty("mongodb.collection"));
+
+			BasicDBObject whereQuery = new BasicDBObject();
+			whereQuery.put("_id",serviceLine);
+			FindIterable<Document> cursor = coll.find(whereQuery);
+			//NodeData currentData = new NodeData();
+			Map<String,Object> metaObject = new HashMap<String, Object>();
+			Map<String,Object> dataObject = new HashMap<String, Object>();
+			for (Document d : cursor) {
+				//currentData = (NodeData) d.get("data");
+				((ObjectNode) rootNode).putPOJO("data", d.get("data"));
+				dataObject = (Map<String, Object>) d.get("data");
+				metaObject = (Map<String, Object>) d.get("meta");
+				//((ObjectNode) rootNode).putPOJO(Constants.META_STR, d.get("meta"));
+			}
+			
+			JSONObject json = new JSONObject(dataObject);
+			
+			NodeData currentData = mapper.readValue(json.toString(), NodeData.class);
+			Properties fieldAppProperties = getFieldPasroperties();
+			//NodeData processedData = MessageProcessor.updateData(currentData, fieldAppProperties, updatedData);
+			NodeData processedData = MessageProcessor.getUpdatedData(currentData, fieldAppProperties, updatedData);
+			try {
+				appProperties.load(propertiesInput);
+
+				coll.deleteOne(Filters.eq("_id", serviceLine));
+
+				Document doc = new Document();
+				doc.append("_id", serviceLine);
+				doc.append("meta", mapper.convertValue(metaObject, Map.class));
+				doc.append("data", mapper.convertValue(processedData, Map.class));
+
+				coll.insertOne(doc);
+
+				mongoClient.close();
+
+			} catch (IOException e) {
+				e.printStackTrace();
+				log.error("Sorry, unable to find application.properties");
+			}
+			
+			mongoClient.close();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			log.error("Sorry, unable to find application.properties");
+		}
+		
+		//return "Successfully uploaded file : " ;
+		return ResponseEntity.status(HttpStatus.CREATED)
+			       .contentType(MediaType.TEXT_PLAIN)
+			       .body("Data Updated!");
+	}*/
 	
 	@CrossOrigin(origins = "*")
 	@PostMapping("/update/publish/{serviceLine}")
@@ -118,8 +184,6 @@ public class ExcelToJsonController {
 			Map<String, Integer> countMap = new HashMap<String, Integer> (); 
 			countMap.put("count", 0);
 			LinkedHashMap<String, Object> processedNFR = MessageProcessor.updateNFR(fieldAppProperties,(LinkedHashMap<String, Object>) updatedData.get("data"), countMap);
-			Map<String, Object> updatedDetails = (Map<String, Object>) updatedData.get("details");
-			updatedDetails.put("updatedTimeStamp", new Timestamp(System.currentTimeMillis()).toString());
 			try {
 				coll.deleteOne(Filters.eq("_id", serviceLine));
 
@@ -127,7 +191,6 @@ public class ExcelToJsonController {
 				doc.append("_id", serviceLine);
 				doc.append("meta", mapper.convertValue(updatedData.get("meta"), Map.class));
 				doc.append("data", mapper.convertValue(processedNFR, Map.class));
-				doc.append("details", mapper.convertValue(updatedDetails, Map.class));
 
 				coll.insertOne(doc);
 
@@ -135,7 +198,7 @@ public class ExcelToJsonController {
 
 			} catch (Exception e) {
 				e.printStackTrace();
-				log.error("Sorry, unable to find application.properties");
+				log.error("ok.. Sorry, unable to find application.properties");
 			}
 			
 			mongoClient.close();
@@ -171,9 +234,7 @@ public class ExcelToJsonController {
 			MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),
 					new Integer(appProperties.getProperty("mongodb.port")));
 			MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
-			MongoCollection<Document> coll = db.getCollection(appProperties.getProperty("mongodb.collection"));
-			Map<String, Object> updatedDetails = (Map<String, Object>) updatedData.get("details");
-			updatedDetails.put("updatedTimeStamp", new Timestamp(System.currentTimeMillis()).toString());
+			MongoCollection<Document> coll = db.getCollection(appProperties.getProperty("mongodb.collection"));			
 			try {
 				coll.deleteOne(Filters.eq("_id", serviceLine));
 
@@ -181,7 +242,6 @@ public class ExcelToJsonController {
 				doc.append("_id", serviceLine);
 				doc.append("meta", mapper.convertValue(updatedData.get("meta"), Map.class));
 				doc.append("data", mapper.convertValue(updatedData.get("data"), Map.class));
-				doc.append("details", mapper.convertValue(updatedDetails, Map.class));
 
 				coll.insertOne(doc);
 
@@ -240,7 +300,7 @@ public class ExcelToJsonController {
 		return JSONObject.quote("Successfully uploaded file : " + file.getOriginalFilename());
 	}
 
-	/*@CrossOrigin(origins = "*")
+	@CrossOrigin(origins = "*")
     @PostMapping("/saveAs/{id}")
     public ResponseEntity<String> saveAsData( @RequestBody Map<String, Object> updatedData, @PathVariable  String  id) throws IOException {
           log.info("uploading the file " + id);
@@ -288,9 +348,9 @@ public class ExcelToJsonController {
           }
           return ResponseEntity.ok().body(JSONObject.quote("Successfully added file : " + id));
     }
-*/
+
 	
-/*    @CrossOrigin(origins = "*")
+    @CrossOrigin(origins = "*")
     @PostMapping("/rename")
     public ResponseEntity<String> rename(@RequestParam("oldId") String oldId, @RequestParam("newId") String newId) throws IOException {
 		
@@ -344,7 +404,7 @@ public class ExcelToJsonController {
 		}
           
     }
-*/    
+    
     @CrossOrigin(origins = "*")
     @GetMapping("/newDocument")
     public ResponseEntity<String> newTemplate() throws IOException {
@@ -387,16 +447,11 @@ public class ExcelToJsonController {
 		HashMap<String, Object> metaDataMap = new HashMap<String, Object>();
 
 		metaDataMap = mapper.readValue(metaDatajson, new TypeReference<Map<String, Object>>() {	});
-		Map<String, Object> addDetails = new HashMap<String, Object>();
-		addDetails.put("insertedTimeStamp", new Timestamp(System.currentTimeMillis()).toString());
-		addDetails.put("isLocked", false);
-		addDetails.put("updatedTimeStamp", null);
-		
+
 		Document newDoc = new Document();
 		newDoc.append("_id", DocId);
 		newDoc.append("meta", metaDataMap);
 		newDoc.append("data", mapper.convertValue(nodeData, Map.class));
-		doc.append("details", mapper.convertValue(addDetails, Map.class));
 		nodeColl.insertOne(newDoc);
 
 		mongoClient.close();
@@ -438,7 +493,6 @@ public class ExcelToJsonController {
 
 			for (Document d : cursor) {
 				((ObjectNode) rootNode).putPOJO("data", d.get("data"));
-				((ObjectNode) rootNode).putPOJO("details", d.get("details"));
 				((ObjectNode) rootNode).putPOJO(Constants.META_STR, d.get("meta"));
 				((ObjectNode) rootNode).putPOJO(Constants.ID, d.get("_id"));
 			}
@@ -458,69 +512,7 @@ public class ExcelToJsonController {
 
 	}
 	
-	@CrossOrigin(origins = "*")
-	@PostMapping("/lock/service/{serviceLine}")
-	public ResponseEntity<String> fetchData(@RequestBody Map<String, Object> lockData, @PathVariable  String  serviceLine) throws JsonProcessingException {
-		ObjectMapper mapper = new ObjectMapper();
-		JsonNode rootNode = mapper.createObjectNode();
-		JSONObject jsonData = new JSONObject();
-		InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
-				.getResourceAsStream("application.properties");
-		Properties appProperties = new Properties();
-
-		try {
-			appProperties.load(propertiesInput);
-
-			MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),
-					new Integer(appProperties.getProperty("mongodb.port")));
-			MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
-			MongoCollection<Document> coll = db.getCollection(appProperties.getProperty("mongodb.collection"));
-
-			BasicDBObject whereQuery = new BasicDBObject();
-			whereQuery.put("_id",serviceLine);
-			FindIterable<Document> cursor = coll.find(whereQuery);
-			Map<String, Object> data = new HashMap<String, Object>();
-			Map<String, Object> meta = new HashMap<String, Object>();
-			Map<String, Object> details = new HashMap<String, Object>();
-			for (Document d : cursor) {
-				data =  (Map<String, Object>) d.get("data");
-				meta= (Map<String, Object>) d.get("meta");
-				details= (Map<String, Object>) d.get("details");
-			}
-			Timestamp timestamp = new Timestamp(System.currentTimeMillis());
-			details.put("updatedTimeStamp", timestamp.toString());
-			details.put("isLocked", lockData.get("isLocked"));
-			
-			try {
-				coll.deleteOne(Filters.eq("_id", serviceLine));
-
-				Document doc = new Document();
-				doc.append("_id", serviceLine);
-				doc.append("meta", mapper.convertValue(meta, Map.class));
-				doc.append("data", mapper.convertValue(data, Map.class));
-				doc.append("details", mapper.convertValue(details, Map.class));
-
-				coll.insertOne(doc);
-
-				mongoClient.close();
-
-			} catch (Exception e) {
-				e.printStackTrace();
-				log.error("Sorry, unable to find application.properties");
-			}
-
-			mongoClient.close();
-
-		} catch (IOException e) {
-			log.error("Sorry, unable to find application.properties");
-		}
-
-		HttpHeaders responseHeaders = new HttpHeaders();
-		responseHeaders.set("Content-Type", "application/json");
-		jsonData.put("status", "success");
-		return ResponseEntity.ok().headers(responseHeaders).body(jsonData.toString());
-
-	}
+	
 	@CrossOrigin(origins = "*")
 	@GetMapping("/fetch/{serviceLine}/{serialNo}")
 	public ResponseEntity<String> fetchDataById(@PathVariable  String  serviceLine, @PathVariable  String  serialNo) throws JsonProcessingException {
@@ -544,13 +536,11 @@ public class ExcelToJsonController {
 			//NodeData currentData = new NodeData();
 			Map<String,Object> metaObject = new HashMap<String, Object>();
 			Map<String,Object> dataObject = new HashMap<String, Object>();
-			Map<String,Object> details = new HashMap<String, Object>();
 			for (Document d : cursor) {
 				//currentData = (NodeData) d.get("data");
 				((ObjectNode) rootNode).putPOJO("data", d.get("data"));
 				dataObject = (Map<String, Object>) d.get("data");
 				metaObject = (Map<String, Object>) d.get("meta");
-				details = (Map<String, Object>) d.get("details");
 				//((ObjectNode) rootNode).putPOJO(Constants.META_STR, d.get("meta"));
 			}
 			mongoClient.close();
@@ -563,7 +553,6 @@ public class ExcelToJsonController {
 			map.put("_id", serviceLine);
 			map.put("meta", mapper.convertValue(metaObject, Map.class));
 			map.put("data", mapper.convertValue(processedData, Map.class));
-			map.put("details", mapper.convertValue(details, Map.class));
 		} catch (IOException e) {
 			e.printStackTrace();
 			log.error("Sorry, unable to find application.properties");
