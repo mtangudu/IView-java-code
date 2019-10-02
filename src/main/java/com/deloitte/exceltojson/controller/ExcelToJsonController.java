@@ -169,10 +169,12 @@ public class ExcelToJsonController {
 		InputStream fieldpropertiesInput = ExcelToJsonController.class.getClassLoader()
 				.getResourceAsStream("field-details.properties");
 		Properties appProperties = new Properties();
+		Properties fieldAppProperties = new Properties();
+		
 		ObjectMapper mapper = new ObjectMapper();
 		try {
+			fieldAppProperties.load(fieldpropertiesInput);
 			appProperties.load(propertiesInput);
-			appProperties.load(fieldpropertiesInput);
 
 			MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),
 					new Integer(appProperties.getProperty("mongodb.port")));
@@ -181,8 +183,7 @@ public class ExcelToJsonController {
 			//MessageProcessor.updateNFR((Map<String, Object>) updatedData.get("data"), 0);
 			Map<String, Integer> countMap = new HashMap<String, Integer> (); 
 			countMap.put("count", 0);
-			
-			LinkedHashMap<String, Object> processedNFR = MessageProcessor.updateNFR(appProperties,(LinkedHashMap<String, Object>) updatedData.get("data"), countMap);
+			LinkedHashMap<String, Object> processedNFR = MessageProcessor.updateNFR(fieldAppProperties,(LinkedHashMap<String, Object>) updatedData.get("data"), countMap);
 			try {
 				coll.deleteOne(Filters.eq("_id", serviceLine));
 
@@ -197,7 +198,7 @@ public class ExcelToJsonController {
 
 			} catch (Exception e) {
 				e.printStackTrace();
-				log.error("Sorry, unable to find application.properties");
+				log.error("ok.. Sorry, unable to find application.properties");
 			}
 			
 			mongoClient.close();

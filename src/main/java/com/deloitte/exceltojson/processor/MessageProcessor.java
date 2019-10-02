@@ -51,17 +51,17 @@ public class MessageProcessor {
 				updateNFR(appProperties, c, countMap );
 			}
 			else{
-				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) c.get(appProperties.get("data.details"));
-				int timeOfFun = Calculate.getTimeOfFunction(c);
-				int totalProcessTime = timeOfFun *Calculate.convertStringToInt(nd.get(appProperties.get("data.details.countOfInvocations"))) ;
-				int totalProcessNFR = Calculate.convertStringToInt(nd.get(appProperties.get("data.details.countOfInvocations")))
-						* Calculate.convertStringToInt(nd.get(appProperties.get("data.details.ProcessNFR")));
-				nd.put((String) appProperties.get("data.details.timeOfFuncation"), String.valueOf(timeOfFun));
-				nd.put((String) appProperties.get("data.details.totalProcessTime"), String.valueOf(totalProcessTime));
-				nd.put((String) appProperties.get("data.details.totalProcessPathLength"), String.valueOf(totalProcessTime));
-				nd.put((String) appProperties.get("data.details.totalProcessNFR"), String.valueOf(totalProcessNFR));
-				nd.put((String) appProperties.get("data.details.totalProcessPathLenghtNFR"), String.valueOf(totalProcessNFR));				
-				c.put((String) appProperties.get("data.details"), nd);
+				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) c.get(appProperties.get("text.data.details"));
+				int timeOfFun = Calculate.getTimeOfFunction(appProperties, c);
+				int totalProcessTime = timeOfFun *Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.countOfInvocations"))) ;
+				int totalProcessNFR = Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.countOfInvocations")))
+						* Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.ProcessNFR")));
+				nd.put((String) appProperties.get("text.data.details.timeOfFuncation"), String.valueOf(timeOfFun));
+				nd.put((String) appProperties.get("text.data.details.totalProcessTime"), String.valueOf(totalProcessTime));
+				nd.put((String) appProperties.get("text.data.details.totalProcessPathLength"), String.valueOf(totalProcessTime));
+				nd.put((String) appProperties.get("text.data.details.totalProcessNFR"), String.valueOf(totalProcessNFR));
+				nd.put((String) appProperties.get("text.data.details.totalProcessPathLengthNFR"), String.valueOf(totalProcessNFR));				
+				c.put((String) appProperties.get("text.data.details"), nd);
 			}
 		}
 		Map<String, Integer> cm = new LinkedHashMap<String, Integer>();
@@ -76,18 +76,18 @@ public class MessageProcessor {
 			if (currentLocation == countMap.get("count"))
 			{
 				ArrayList<LinkedHashMap<String, Object>> children = (ArrayList<LinkedHashMap<String, Object>>) nodeData.get("children");
-				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) nodeData.get(appProperties.get("data.details"));
-				int timeOfFun = Calculate.getTimeOfFunction(nodeData);
-				int totalProcessTime = Calculate.convertStringToInt(nd.get(appProperties.get("data.details.countOfInvocations"))) * timeOfFun;
-				int totalProcessNFR = Calculate.convertStringToInt(nd.get(appProperties.get("data.details.countOfInvocations"))) 
-							* Calculate.convertStringToInt(nd.get(appProperties.get("data.details.ProcessNFR")));
+				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) nodeData.get(appProperties.get("text.data.details"));
+				int timeOfFun = Calculate.getTimeOfFunction(appProperties, nodeData);
+				int totalProcessTime = Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.countOfInvocations"))) * timeOfFun;
+				int totalProcessNFR = Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.countOfInvocations"))) 
+							* Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.ProcessNFR")));
 				
-				nd.put((String) appProperties.get("data.details.timeOfFuncation"), String.valueOf(timeOfFun));
-				nd.put((String) appProperties.get("data.details.totalProcessTime"), String.valueOf(totalProcessTime));
-				nd.put((String) appProperties.get("data.details.totalProcessPathLength"), Calculate.getTotalProcessPathLenghtForParent(totalProcessTime, children));
-				nd.put((String) appProperties.get("data.details.totalProcessNFR"), String.valueOf(totalProcessNFR));
-				nd.put((String) appProperties.get("data.details.totalProcessPathLenghtNFR"),Calculate.getTotalProcessPathLenghtNFRForParent(totalProcessNFR,children));
-				nodeData.put((String) appProperties.get("data.details"), nd);
+				nd.put((String) appProperties.get("text.data.details.timeOfFuncation"), String.valueOf(timeOfFun));
+				nd.put((String) appProperties.get("text.data.details.totalProcessTime"), String.valueOf(totalProcessTime));
+				nd.put((String) appProperties.get("text.data.details.totalProcessPathLength"), Calculate.getTotalProcessPathLenghtForParent(appProperties, totalProcessTime, children));
+				nd.put((String) appProperties.get("text.data.details.totalProcessNFR"), String.valueOf(totalProcessNFR));
+				nd.put((String) appProperties.get("text.data.details.totalProcessPathLengthNFR"),Calculate.getTotalProcessPathLenghtNFRForParent(appProperties, totalProcessNFR,children));
+				nodeData.put((String) appProperties.get("text.data.details"), nd);
 			}
 			else
 			{
