@@ -2,6 +2,7 @@ package com.deloitte.exceltojson.processor;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -359,11 +360,15 @@ public class MessageProcessor {
 					MongoCollection<Document> coll = db.getCollection(appProperties.getProperty("mongodb.collection"));
 
 					coll.deleteOne(Filters.eq("_id", serviceLine));
-
+					Map<String, Object> addDetails = new HashMap<String, Object>();
+					addDetails.put("insertedTimeStamp", new Timestamp(System.currentTimeMillis()).toString());
+					addDetails.put("isLocked", false);
+					addDetails.put("updatedTimeStamp", null);
 					Document doc = new Document();
 					doc.append("_id", serviceLine);
 					doc.append("meta", metaData);
 					doc.append("data", mapper.convertValue(nodeData, Map.class));
+					doc.append("details", mapper.convertValue(addDetails, Map.class));
 
 					coll.insertOne(doc);
 
