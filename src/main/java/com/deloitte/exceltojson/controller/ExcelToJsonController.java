@@ -486,6 +486,9 @@ public class ExcelToJsonController {
 				data =  (Map<String, Object>) d.get("data");
 				meta= (Map<String, Object>) d.get("meta");
 				details= (Map<String, Object>) d.get("details");
+				if(null == details){
+					details = new HashMap<String, Object>();
+				} 
 			}
 			Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 			details.put("updatedTimeStamp", timestamp.toString());
