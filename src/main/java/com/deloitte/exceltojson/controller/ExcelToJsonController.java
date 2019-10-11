@@ -16,6 +16,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.bson.Document;
 import org.json.JSONObject;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -240,7 +241,7 @@ public class ExcelToJsonController {
 		return JSONObject.quote("Successfully uploaded file : " + file.getOriginalFilename());
 	}
 
-	/*@CrossOrigin(origins = "*")
+	@CrossOrigin(origins = "*")
     @PostMapping("/saveAs/{id}")
     public ResponseEntity<String> saveAsData( @RequestBody Map<String, Object> updatedData, @PathVariable  String  id) throws IOException {
           log.info("uploading the file " + id);
@@ -276,6 +277,11 @@ public class ExcelToJsonController {
                        doc.append("_id", serviceLine);
                        doc.append("meta", mapper.convertValue(updatedData.get("meta"), Map.class));
                        doc.append("data", mapper.convertValue(updatedData.get("data"), Map.class));
+                       
+                       Map<String, Object> details = (Map<String, Object>) updatedData.get("data");
+                       Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+                       details.put("updatedTimeStamp", timestamp.toString());
+                       doc.append("details", mapper.convertValue(details, Map.class));
 
                        coll.insertOne(doc);
                        mongoClient.close();
@@ -288,9 +294,8 @@ public class ExcelToJsonController {
           }
           return ResponseEntity.ok().body(JSONObject.quote("Successfully added file : " + id));
     }
-*/
 	
-/*    @CrossOrigin(origins = "*")
+    @CrossOrigin(origins = "*")
     @PostMapping("/rename")
     public ResponseEntity<String> rename(@RequestParam("oldId") String oldId, @RequestParam("newId") String newId) throws IOException {
 		
@@ -344,7 +349,7 @@ public class ExcelToJsonController {
 		}
           
     }
-*/    
+    
     @CrossOrigin(origins = "*")
     @GetMapping("/newDocument")
     public ResponseEntity<String> newTemplate() throws IOException {
