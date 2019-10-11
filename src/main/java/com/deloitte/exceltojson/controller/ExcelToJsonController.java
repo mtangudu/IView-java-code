@@ -334,6 +334,7 @@ public class ExcelToJsonController {
 				newDoc.append("_id", newId);
 				newDoc.append("meta",nc.get("meta"));
 				newDoc.append("data",nc.get("data"));
+				newDoc.append("details",nc.get("details"));
 				nodeColl.insertOne(newDoc);
 			}
 			
