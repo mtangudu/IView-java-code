@@ -278,9 +278,10 @@ public class ExcelToJsonController {
                        doc.append("meta", mapper.convertValue(updatedData.get("meta"), Map.class));
                        doc.append("data", mapper.convertValue(updatedData.get("data"), Map.class));
                        
-                       Map<String, Object> details = (Map<String, Object>) updatedData.get("details");
+                       Map<String, Object> details = new HashMap<String, Object>(); 
                        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
                        details.put("updatedTimeStamp", timestamp.toString());
+                       details.put("isLocked", "false");
                        doc.append("details", mapper.convertValue(details, Map.class));
 
                        coll.insertOne(doc);
@@ -402,7 +403,7 @@ public class ExcelToJsonController {
 		newDoc.append("_id", DocId);
 		newDoc.append("meta", metaDataMap);
 		newDoc.append("data", mapper.convertValue(nodeData, Map.class));
-		doc.append("details", mapper.convertValue(addDetails, Map.class));
+		newDoc.append("details", mapper.convertValue(addDetails, Map.class));
 		nodeColl.insertOne(newDoc);
 
 		mongoClient.close();
