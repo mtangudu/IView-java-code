@@ -159,7 +159,7 @@ public class ExcelToJsonController {
 	
 	@CrossOrigin(origins = "*")
 	@PostMapping("/update/{serviceLine}")
-	public String updateData( @RequestBody Map<String, Object> updatedData, @PathVariable  String  serviceLine) throws IOException {
+	public String updateRecord( @RequestBody Map<String, Object> updatedData, @PathVariable  String  serviceLine) throws IOException {
 		
 		log.info("Initiating the process ");
 		InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
@@ -173,9 +173,16 @@ public class ExcelToJsonController {
 					new Integer(appProperties.getProperty("mongodb.port")));
 			MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
 			MongoCollection<Document> coll = db.getCollection(appProperties.getProperty("mongodb.collection"));
-			Map<String, Object> updatedDetails = (Map<String, Object>) updatedData.get("details");
-			updatedDetails.put("updatedTimeStamp", new Timestamp(System.currentTimeMillis()).toString());
+			Map<String, Object> updatedDetails = null;
 			try {
+				BasicDBObject whereQuery = new BasicDBObject();
+				whereQuery.put("_id",serviceLine);
+				FindIterable<Document> cursor = coll.find(whereQuery);
+
+				for (Document d : cursor) {
+					updatedDetails = (Map<String, Object>) d.get("details");
+				}
+				updatedDetails.replace("updatedTimeStamp", new Timestamp(System.currentTimeMillis()).toString());
 				coll.deleteOne(Filters.eq("_id", serviceLine));
 
 				Document doc = new Document();
@@ -281,7 +288,7 @@ public class ExcelToJsonController {
                        Map<String, Object> details = new HashMap<String, Object>(); 
                        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
                        details.put("updatedTimeStamp", timestamp.toString());
-                       details.put("isLocked", "false");
+                       details.put("isLocked", false);
                        doc.append("details", mapper.convertValue(details, Map.class));
 
                        coll.insertOne(doc);
