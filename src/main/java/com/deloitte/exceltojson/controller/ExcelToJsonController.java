@@ -278,7 +278,7 @@ public class ExcelToJsonController {
                        doc.append("meta", mapper.convertValue(updatedData.get("meta"), Map.class));
                        doc.append("data", mapper.convertValue(updatedData.get("data"), Map.class));
                        
-                       Map<String, Object> details = (Map<String, Object>) updatedData.get("data");
+                       Map<String, Object> details = (Map<String, Object>) updatedData.get("details");
                        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
                        details.put("updatedTimeStamp", timestamp.toString());
                        doc.append("details", mapper.convertValue(details, Map.class));
