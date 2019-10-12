@@ -44,27 +44,27 @@ public class MessageProcessor {
 	public static LinkedHashMap<String, Object> updateNFR (Properties appProperties, LinkedHashMap<String, Object> nodeData,Map<String, Integer> countMap ){
 		ArrayList<LinkedHashMap<String, Object>> children = (ArrayList<LinkedHashMap<String, Object>>) nodeData.get("children");
 		countMap.put("count",countMap.get("count") + 1);
-		
-		for (LinkedHashMap<String, Object> c : children)
-		{
-			int cb = isChildAvailable(c);
-			if (cb == 1){
-				updateNFR(appProperties, c, countMap );
+		if (children != null)
+			for (LinkedHashMap<String, Object> c : children)
+			{
+				int cb = isChildAvailable(c);
+				if (cb == 1){
+					updateNFR(appProperties, c, countMap );
+				}
+				else{
+					LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) c.get(appProperties.get("text.data.details"));
+					int timeOfFun = Calculate.getTimeOfFunction(appProperties, c);
+					int totalProcessTime = timeOfFun *Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.countOfInvocations"))) ;
+					int totalProcessNFR = Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.countOfInvocations")))
+							* Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.ProcessNFR")));
+					nd.put((String) appProperties.get("text.data.details.timeOfFuncation"), String.valueOf(timeOfFun));
+					nd.put((String) appProperties.get("text.data.details.totalProcessTime"), String.valueOf(totalProcessTime));
+					nd.put((String) appProperties.get("text.data.details.totalProcessPathLength"), String.valueOf(totalProcessTime));
+					nd.put((String) appProperties.get("text.data.details.totalProcessNFR"), String.valueOf(totalProcessNFR));
+					nd.put((String) appProperties.get("text.data.details.totalProcessPathLengthNFR"), String.valueOf(totalProcessNFR));				
+					c.put((String) appProperties.get("text.data.details"), nd);
+				}
 			}
-			else{
-				LinkedHashMap<String, Object> nd = (LinkedHashMap<String, Object>) c.get(appProperties.get("text.data.details"));
-				int timeOfFun = Calculate.getTimeOfFunction(appProperties, c);
-				int totalProcessTime = timeOfFun *Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.countOfInvocations"))) ;
-				int totalProcessNFR = Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.countOfInvocations")))
-						* Calculate.convertStringToInt(nd.get(appProperties.get("text.data.details.ProcessNFR")));
-				nd.put((String) appProperties.get("text.data.details.timeOfFuncation"), String.valueOf(timeOfFun));
-				nd.put((String) appProperties.get("text.data.details.totalProcessTime"), String.valueOf(totalProcessTime));
-				nd.put((String) appProperties.get("text.data.details.totalProcessPathLength"), String.valueOf(totalProcessTime));
-				nd.put((String) appProperties.get("text.data.details.totalProcessNFR"), String.valueOf(totalProcessNFR));
-				nd.put((String) appProperties.get("text.data.details.totalProcessPathLengthNFR"), String.valueOf(totalProcessNFR));				
-				c.put((String) appProperties.get("text.data.details"), nd);
-			}
-		}
 		Map<String, Integer> cm = new LinkedHashMap<String, Integer>();
 		cm.put("count", 1);
 		return updateNFRAtLocation(appProperties, nodeData, countMap.get("count")-1,cm );
