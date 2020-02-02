@@ -1,5 +1,6 @@
 package com.deloitte.exceltojson.controller;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,6 +10,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.core.io.Resource;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.apache.log4j.Logger;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
@@ -26,10 +34,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
+import org.springframework.core.io.UrlResource;
+
+import java.net.MalformedURLException;
 
 import com.deloitte.exceltojson.pojo.ExcelReader;
 import com.deloitte.exceltojson.pojo.NodeData;
 import com.deloitte.exceltojson.processor.Constants;
+import com.deloitte.exceltojson.processor.Export;
 import com.deloitte.exceltojson.processor.MessageProcessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -48,6 +61,112 @@ import com.mongodb.client.model.Filters;
 public class ExcelToJsonController {
 
 	final static Logger log = Logger.getLogger(ExcelToJsonController.class);
+	
+	public Resource loadFileAsResource(String fileName) {
+        try {
+            Path filePath = Paths.get(fileName);
+            Resource resource = new UrlResource(filePath.toUri());
+            if(resource.exists()) {
+            	File file = new File(fileName);
+            	file.deleteOnExit();
+                return resource;
+            } else {
+            	System.err.println("resource not found ");
+                //throw new MyFileNotFoundException("File not found " + fileName);
+            }
+        } catch (MalformedURLException ex) {
+        	System.err.println("URL exception ");
+            //throw new MyFileNotFoundException("File not found " + fileName, ex);
+        }
+		return null;
+    }
+	
+	
+	@CrossOrigin(origins = "*")
+	@GetMapping("/downloadFile/{fileName:.+}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName, HttpServletRequest request) throws IOException {
+        // Load file as Resource
+		System.out.println("fileName : " + fileName);
+		System.out.println("request : " + request);
+		
+        Resource resource = loadFileAsResource(fileName);
+        System.out.println("resource + "+ resource);
+        System.out.println("request : " + resource.getFile().getAbsolutePath());
+        // Try to determine file's content type
+        String contentType = null;
+        try {
+            contentType = request.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
+        } catch (IOException ex) {
+            log.info("Could not determine file type.");
+        }
+
+        // Fallback to the default content type if type could not be determined
+        if(contentType == null) {
+            contentType = "application/octet-stream";
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
+    }
+	
+	
+	@CrossOrigin(origins = "*")
+	@GetMapping("/export/{serviceLine}")
+    public ResponseEntity<Resource> exportData(@PathVariable String serviceLine) throws IOException {
+        // Load file as Resource
+		System.out.println("fileName : " + serviceLine);
+		String dir = System.getProperty("user.dir");
+		long start = System.nanoTime();
+		String filePath = dir + "\\export\\"+String.valueOf(start)+serviceLine+".xlsx";
+		System.out.println("file path " + filePath);
+		ObjectMapper mapper = new ObjectMapper();
+		JsonNode rootNode = mapper.createObjectNode();
+		InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
+				.getResourceAsStream("application.properties");
+		Properties appProperties = new Properties();
+
+		try {
+			appProperties.load(propertiesInput);
+
+			MongoClient mongoClient = new MongoClient(appProperties.getProperty("mongodb.host"),
+					new Integer(appProperties.getProperty("mongodb.port")));
+			MongoDatabase db = mongoClient.getDatabase(appProperties.getProperty("mongodb.db"));
+			MongoCollection<Document> coll = db.getCollection(appProperties.getProperty("mongodb.collection"));
+
+			BasicDBObject whereQuery = new BasicDBObject();
+			whereQuery.put("_id",serviceLine);
+			FindIterable<Document> cursor = coll.find(whereQuery);
+			Map<String, Object> a = new HashMap<String, Object>();
+			for (Document d : cursor) {
+				System.out.println(d.get("data").getClass());
+				a = mapper.convertValue(d.get("data"), Map.class);
+				((ObjectNode) rootNode).putPOJO("data", d.get("data"));
+				((ObjectNode) rootNode).putPOJO("details", d.get("details"));
+				((ObjectNode) rootNode).putPOJO(Constants.META_STR, d.get("meta"));
+				((ObjectNode) rootNode).putPOJO(Constants.ID, d.get("_id"));
+			}
+			mongoClient.close();
+			Export e = new Export();
+			e.writeExcel(e.getDataAsList(a), getFieldPasroperties(), filePath);
+		} catch (IOException e) {
+			log.error("Sorry, unable to find application.properties");
+		}
+
+		HttpHeaders responseHeaders = new HttpHeaders();
+		responseHeaders.set("Content-Type", "application/json");
+
+		Resource resource = loadFileAsResource(filePath);
+        String contentType = "application/octet-stream";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
+
+    }
+	
 	
 	@CrossOrigin(origins = "*")
 	@GetMapping("/getSL")
@@ -88,11 +207,6 @@ public class ExcelToJsonController {
 
 	}
 	
-	
-	
-	
-	
-
 	
 	@CrossOrigin(origins = "*")
 	@PostMapping("/update/publish/{serviceLine}")
