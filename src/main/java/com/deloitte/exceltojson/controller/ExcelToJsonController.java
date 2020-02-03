@@ -114,7 +114,7 @@ public class ExcelToJsonController {
 	
 	@CrossOrigin(origins = "*")
 	@GetMapping("/export/{serviceLine}")
-    public ResponseEntity<Resource> exportData(@PathVariable String serviceLine) throws IOException {
+    public ResponseEntity<byte[]> exportData(@PathVariable String serviceLine) throws IOException {
         // Load file as Resource
 		System.out.println("fileName : " + serviceLine);
 		String dir = System.getProperty("user.dir");
@@ -149,21 +149,19 @@ public class ExcelToJsonController {
 			}
 			mongoClient.close();
 			Export e = new Export();
-			e.writeExcel(e.getDataAsList(a), getFieldPasroperties(), filePath);
+			byte[] bytes = e.writeExcel(e.getDataAsList(a), getFieldPasroperties(), filePath);
+			String fileName = serviceLine + ".xlsx";
+			HttpHeaders respHeaders = new HttpHeaders();
+			respHeaders.setContentLength(bytes.length);
+			respHeaders.setContentType(new MediaType("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+			respHeaders.setCacheControl("must-revalidate, post-check=0, pre-check=0");
+			respHeaders.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName);
+			return new ResponseEntity<byte[]>(bytes, respHeaders, HttpStatus.OK);
 		} catch (IOException e) {
 			log.error("Sorry, unable to find application.properties");
 		}
+		return null;
 
-		HttpHeaders responseHeaders = new HttpHeaders();
-		responseHeaders.set("Content-Type", "application/json");
-
-		Resource resource = loadFileAsResource(filePath);
-        String contentType = "application/octet-stream";
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                .body(resource);
 
     }
 	

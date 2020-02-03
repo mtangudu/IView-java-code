@@ -1,5 +1,6 @@
 package com.deloitte.exceltojson.processor;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -93,7 +94,7 @@ public class Export{
 	    cell = row.createCell(24);cell.setCellValue(rowData.get(fieldProperties.getProperty("text.data.details.totalProcessPathLengthNFR")));
 	    
 	}
-	public void writeExcel(LinkedList<Map<String,String>> rows, Properties fieldProperties, String filePath) throws IOException {
+	public byte[] writeExcel(LinkedList<Map<String,String>> rows, Properties fieldProperties, String filePath) throws IOException {
 	    Workbook workbook = new XSSFWorkbook();
 	    Sheet sheet = workbook.createSheet();
 	 
@@ -104,10 +105,19 @@ public class Export{
 	        writeBook(rowData, row,fieldProperties);
 	    }
 	    System.out.println("writing into file path " + filePath);
-	    try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+	   /* try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
 	        workbook.write(outputStream);
 	        workbook.close();
+	    }*/
+	    
+	    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	    try {
+	        workbook.write(bos);
+	    } finally {
+	        bos.close();
 	    }
+	    byte[] bytes = bos.toByteArray();
+	    return bytes;
 	}
 	
 }
