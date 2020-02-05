@@ -168,6 +168,17 @@ public class Export{
         headerCellStyle.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
         headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         headerCellStyle.setAlignment(HorizontalAlignment.CENTER);
+        
+        
+        Font metaDataLine2headerFont = workbook.createFont();
+        metaDataLine2headerFont.setBold(true);
+        metaDataLine2headerFont.setFontHeightInPoints((short) 12);
+        metaDataLine2headerFont.setColor(IndexedColors.BLACK1.getIndex());
+        CellStyle metaDataLine2headerCellStyle = workbook.createCellStyle();
+        metaDataLine2headerCellStyle.setFont(metaDataLine2headerFont);
+        metaDataLine2headerCellStyle.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
+        metaDataLine2headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        metaDataLine2headerCellStyle.setAlignment(HorizontalAlignment.CENTER);
 
         Row headerRow = metaDataSheet.createRow(0);
         metaDataSheet.addMergedRegion(new CellRangeAddress(0,0,0,2));
@@ -187,19 +198,82 @@ public class Export{
         cellCategoryHDR.setCellValue("Category");
         
         LinkedList<MetaDatCode> etaList = processedMetaData.get("etaStatus");
-        int rowCount = 0;
-	    for (MetaDatCode eta : etaList) {
-	        Row row = metaDataSheet.createRow(++rowCount);
-	        writeMetaDataInBook(eta, row);
+	    LinkedList<MetaDatCode> categoryList = processedMetaData.get("category");
+	    LinkedList<MetaDatCode> connectionTypeList = processedMetaData.get("connectionType");
+	    int noOfMaxObjInList = getMaxLength(etaList.size(), categoryList.size(), connectionTypeList.size());
+	    
+	    int totalRowCount = 1;
+	    // add metedata headers 
+	    Row metaDataHeader = metaDataSheet.createRow(1);
+	    writeMetaDataHeaderLine2(metaDataHeader,metaDataLine2headerCellStyle);
+	    
+	    for (int x =0; x<=noOfMaxObjInList; x++)
+	    {
+	    	MetaDatCode etaData = null;
+		    MetaDatCode connectionTypeData = null;
+		    MetaDatCode categoryListData = null;
+	    	Row row = metaDataSheet.createRow(++totalRowCount);
+	    	if (etaList.size()-1>=x)
+	    		etaData = etaList.get(x);
+	    	if (connectionTypeList.size()-1>=x)
+	    		connectionTypeData = connectionTypeList.get(x);
+	    	if (categoryList.size()-1>=x)
+	    		categoryListData = categoryList.get(x);
+	    	
+	    	writeMetaDataInRow(etaData,connectionTypeData, categoryListData, row );
 	    }
 	}
 	
 	
-	private void writeMetaDataInBook(MetaDatCode eta, Row row) {
-	    Cell cell = row.createCell(0);
-	    cell.setCellValue(eta.getCode());
-	    cell = row.createCell(1);cell.setCellValue(eta.getColor());
-	    cell = row.createCell(2);cell.setCellValue(eta.getDescription());
+	private void writeMetaDataHeaderLine2 ( Row metaDataHeader, CellStyle headerCellStyle) {
+		
+		int etaSecondColumn=1, etaThirdColumn=2, 
+				connenctionFirstColumn=4, connectionSecondColumn=5, connectionThirdColumn=6,
+				categoryFirstColumn=8, categorySecondColumn=9, categoryThirdColumnn=10;
+		
+	    Cell cell = metaDataHeader.createCell(0); 
+	    cell.setCellStyle(headerCellStyle); cell.setCellValue("ETA Status");
+	    cell = metaDataHeader.createCell(etaSecondColumn);cell.setCellStyle(headerCellStyle);cell.setCellValue("color");
+	    cell = metaDataHeader.createCell(etaThirdColumn);cell.setCellStyle(headerCellStyle);cell.setCellValue("description");
+	    
+	    cell = metaDataHeader.createCell(connenctionFirstColumn);cell.setCellStyle(headerCellStyle);cell.setCellValue("Connection Type");
+	    cell = metaDataHeader.createCell(connectionSecondColumn);cell.setCellStyle(headerCellStyle);cell.setCellValue("description");
+	    cell = metaDataHeader.createCell(connectionThirdColumn);cell.setCellStyle(headerCellStyle);cell.setCellValue("color");
+	    cell = metaDataHeader.createCell(categoryFirstColumn);cell.setCellStyle(headerCellStyle);cell.setCellValue("category");
+	    cell = metaDataHeader.createCell(categorySecondColumn);cell.setCellStyle(headerCellStyle);cell.setCellValue("color");
+	    cell = metaDataHeader.createCell(categoryThirdColumnn);cell.setCellStyle(headerCellStyle);cell.setCellValue("Description");
 	}
 	
+	private void writeMetaDataInRow(MetaDatCode eta, MetaDatCode connection, MetaDatCode category,Row row) {
+		
+		int etaFirstColumn = 0, etaSecondColumn=1, etaThirdColumn=2, 
+				connenctionFirstColumn=4, connectionSecondColumn=5, connectionThirdColumn=6,
+				categoryFirstColumn=8, categorySecondColumn=9, categoryThirdColumnn=10;
+		Cell cell = row.createCell(etaFirstColumn);
+		if (eta!= null){
+			cell.setCellValue(eta.getCode());
+			cell = row.createCell(etaSecondColumn);cell.setCellValue(eta.getColor());
+		    cell = row.createCell(etaThirdColumn);cell.setCellValue(eta.getDescription());
+		}
+		if (connection!= null){
+			cell = row.createCell(connenctionFirstColumn);cell.setCellValue(connection.getCode());
+			cell = row.createCell(connectionSecondColumn);cell.setCellValue(connection.getColor());
+		    cell = row.createCell(connectionThirdColumn);cell.setCellValue(connection.getDescription());
+		}
+		if (category!= null){
+			cell = row.createCell(categoryFirstColumn);cell.setCellValue(category.getCode());
+			cell = row.createCell(categorySecondColumn);cell.setCellValue(category.getColor());
+		    cell = row.createCell(categoryThirdColumnn);cell.setCellValue(category.getDescription());
+		}
+	}
+
+	private static int getMaxLength (int etaLen, int categoryLen, int connectionLen){
+
+	      if( etaLen >= categoryLen && etaLen >= connectionLen)
+	          return etaLen;
+	      else if (categoryLen >= etaLen && categoryLen >= connectionLen)
+	          return categoryLen;
+	      else
+	          return connectionLen;
+	  }
 }

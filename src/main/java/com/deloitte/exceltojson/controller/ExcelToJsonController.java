@@ -54,8 +54,7 @@ public class ExcelToJsonController {
 	@CrossOrigin(origins = "*")
 	@GetMapping("/export/{serviceLine}")
     public ResponseEntity<byte[]> exportData(@PathVariable String serviceLine) throws IOException {
-        // Load file as Resource
-
+    	
 		ObjectMapper mapper = new ObjectMapper();
 		InputStream propertiesInput = ExcelToJsonController.class.getClassLoader()
 				.getResourceAsStream("application.properties");
